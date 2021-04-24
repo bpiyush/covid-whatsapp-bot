@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Google Sheets API
+data/keys.json
+
 # C extensions
 *.so
 
