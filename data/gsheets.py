@@ -33,3 +33,7 @@ def get_gsheet(sheet_id=SAMPLE_SPREADSHEET_ID):
     df = pd.DataFrame(cell_values, columns=header_row)
 
     return df
+
+if __name__ == '__main__':
+    df = get_gsheet()
+    import ipdb; ipdb.set_trace()
