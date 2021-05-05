@@ -2,9 +2,7 @@ from django.test import TestCase
 
 # Create your tests here.
 
-from .views import get_location_from_zip, search_location_in_sheet
-import sys
-sys.path.append('/Users/piyushbagad/personal/projects/covid-whatsapp-bot/')
+from .views import get_location_from_zip, search_location_in_sheet, get_response_for_help
 
 from data.gsheets import get_gsheet
 
@@ -35,8 +33,8 @@ class ViewsTestCase(TestCase):
 
         latitude = location.latitude
         longitude = location.longitude
-        self.assertEqual(latitude, 20.02405519230769)
-        self.assertEqual(longitude, 73.76155313076923)
+        self.assertEqual(latitude, '20.02405519230769')
+        self.assertEqual(longitude, '73.76155313076923')
 
     def test_search_location_in_sheet(self):
         """Tests search location in sheet
@@ -49,3 +47,10 @@ class ViewsTestCase(TestCase):
 
         response = search_location_in_sheet(zipcode, location)
         self.assertTrue('Mr. Rakesh' in response)
+
+    def test_get_response_for_help(self):
+        """Tests get_response_for_help
+        """
+        incoming_msg = 'Help\nCity: Mumbai\nReq: Oxygen'
+        response = get_response_for_help(incoming_msg)
+        print(response)

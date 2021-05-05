@@ -1,14 +1,16 @@
 """Script that has functions to extract data from Google Sheet.
 """
+from os.path import join
 import pandas as pd
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 
 from google.oauth2 import service_account
 
+from utils.paths import REPO
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-SERVICE_ACCOUNT_FILE = '/Users/piyushbagad/personal/projects/covid-whatsapp-bot/data/keys.json'
+SERVICE_ACCOUNT_FILE = join(REPO, 'data/keys.json')
 
 credentials = None
 credentials = service_account.Credentials.from_service_account_file(

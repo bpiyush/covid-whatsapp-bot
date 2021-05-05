@@ -9,10 +9,11 @@ from twilio.twiml.messaging_response import MessagingResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 
-import sys
-sys.path.append('/Users/piyushbagad/personal/projects/covid-whatsapp-bot/')
+# import sys
+# sys.path.append('/Users/piyushbagad/personal/projects/covid-whatsapp-bot/')
 
 from data.gsheets import get_gsheet
+from utils.pandas import apply_filters
 
 gsheet = get_gsheet()
 
@@ -36,8 +37,17 @@ def craft_response(df, cols_to_disp=['Contact person', 'Contact number', 'Catego
     response = []
 
     rows = df[cols_to_disp].astype(str).values
+
+    if len(rows) == 0:
+        return "Sorry. No resource found."
+
     for i in range(len(rows)):
-        per_row = '\n'.join(rows[0])
+        values = []
+        for j, value in enumerate(rows[i]):
+            value = f'*{cols_to_disp[j]}*: {value}'
+            values.append(value)
+
+        per_row = '\n'.join(values)
         response.append(per_row)
 
     response = '\n\n'.join(response)
@@ -51,6 +61,38 @@ def search_location_in_sheet(zipcode, location):
     return craft_response(df)
 
 
+def _check_valid_entry(entry, attribute):
+    splits = entry.split(':')
+    splits = [x.replace(' ', '') for x in splits]
+
+    def_resp = f"Information entered incorrectly. \
+        Please enter in the format: '{attribute}: <your-entry>'"
+    def_entry_input = None
+    if splits[0] != attribute:
+        resp = def_resp
+        entry_input = def_entry_input
+    
+    if len(splits) >= 2:
+        entry_input = ' '.join(splits[1:])
+        resp = f"You chose {attribute} as {entry_input}"
+    else:
+        resp = def_resp
+        entry_input = def_entry_input
+    
+    return resp, entry_input
+
+
+def get_response_for_help(incoming_msg):
+    lines = incoming_msg.split('\n')[1:]
+    city = ' '.join(lines[0].split(': ')[1:])
+    resource = ' '.join(lines[1].split(': ')[1:])
+    filters = {'City': city.lower(), 'Category': resource.lower()}
+    df = gsheet.apply(lambda x: x.astype(str).str.lower())
+    df = apply_filters(df, filters)
+    return craft_response(df)
+
+
+
 @csrf_exempt
 def index(request):
     if request.method == 'POST':
@@ -62,8 +104,13 @@ def index(request):
         msg = resp.message()
 
         if incoming_msg == 'hello':
-            response = "*Hi! Thanks for contacting COVID Helper Bot*. \
-            \n Please enter your ZIP code in the format: ZIP <your-zip-code>."
+            response = "*Hi! Thanks for contacting COVID Helper Bot*.\n\n"\
+                "Please enter city and requirement in following format to get help:\n"\
+                "Help\n"\
+                "City: Mumbai\n"\
+                "Req: Oxygen\n\n"\
+                "Resources in your city shall be displayed. Thanks for being patient.'\n"
+
             msg.body(response)
 
         elif incoming_msg.startswith('zip'):
@@ -71,8 +118,26 @@ def index(request):
 
             src_response = search_location_in_sheet(zipcode, location)
 
-            response = zip_response + '\n\n Here is a list of verified resources in your area \n ------- \n\n' + src_response
+            breaker = '\n\n Here is a list of verified resources in your area \n ------- \n\n'
+            response = zip_response + breaker  + src_response
             msg.body(response)
 
+        elif incoming_msg.startswith('city'):
+            response, entry_input = _check_valid_entry(entry, attribute='city')
+
+            if entry_input:
+                df = apply_filters(gsheet, {'City': entry_input})
+        
+        elif incoming_msg.startswith('help'):
+            response = get_response_for_help(incoming_msg)
+            msg.body(response)
+
+        else:
+            response = "Incorrect information supplied. Please enter city and requirement in following format to get help: \n"\
+                "Help\n"\
+                "City: Mumbai\n"\
+                "Req: Oxygen\n\n"\
+                "Resources in your city shall be displayed. Thanks for being patient.'\n"
+            msg.body(response)
 
         return HttpResponse(str(resp))
